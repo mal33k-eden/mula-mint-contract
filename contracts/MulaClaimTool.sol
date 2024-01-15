@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {MulaMint} from "./MulaMint.sol";
 
-contract MintTool is ReentrancyGuard {
+contract MulaClaimTool is ReentrancyGuard {
 
     struct Records {uint256 bnbInvested;uint256 usdtInvested; uint256 claimedAmount;bool status;}
 
@@ -12,12 +12,20 @@ contract MintTool is ReentrancyGuard {
 
     event ClaimedMulaMint(address indexed _investor, uint256 _claimed);
 
+    MulaMint private  _tokenContract;
+
+    constructor (MulaMint token) ReentrancyGuard()  {
+        _tokenContract = token; //link to token contract et
+    }
+
     modifier OnlySingleClaims {
         require(!_claims[msg.sender].status, "You have already claimed your MulaMint. Speak to admin if you have any concerns.");
         _;
     }
     function claim(uint256 _bnbInvested, uint256 _usdtInvested, uint256 _amount) external payable OnlySingleClaims nonReentrant() returns (bool){
-        (bool sent,) = msg.sender.call{value: _amount}("");
+
+        bool sent = _tokenContract.transfer(msg.sender, _amount);
+
         require(sent, "Unable to complete claim transfer. Try again");
         _claims[msg.sender] = Records(_bnbInvested, _usdtInvested, _amount, true);
         emit ClaimedMulaMint(msg.sender, _amount);
@@ -29,7 +37,5 @@ contract MintTool is ReentrancyGuard {
         require(record.status, "There is no record for this investor.  Check address and try again.");
         return (_investor, record.bnbInvested, record.usdtInvested, record.claimedAmount);
     }
-    constructor() ReentrancyGuard(){
 
-    }
 }
